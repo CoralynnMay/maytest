@@ -13,6 +13,8 @@ extern int MT_force_flag;
 extern int MT_total;
 extern int MT_testc;
 extern char** MT_testv;
+extern int MT_suitec;
+extern char** MT_suitev;
 
 #define MAX_BUFFER 4096
 
@@ -28,7 +30,9 @@ Options:\n\
   -h, --help\t\tshow this help message and exit\n\
   -v, --verbose\t\tmake output more verbose\n\
   --no-colour\t\tswitch output to colourless\n\
-  -f, --force\t\tforce all tests to run regardless of failures\n", argv[0])
+  -f, --force\t\tforce all tests to run regardless of failures\n\
+  -t, --test\t\trun specified test, use multiple times for multiple tests\n\
+  -s, --suite\t\trun specified suite, use multiple times for multiple suites\n", argv[0])
 
 #define COLOUR(c) (MT_colour_flag ? c : "")
 #define VERB0(m) printf("%s\n", m)
@@ -74,6 +78,28 @@ Options:\n\
 		VERB1(buffer);\
 	}}} while (0);
 
+#define SUITE(x) do { \
+	int run = 0;\
+	if (MT_suitec > 0) {\
+		for (int i = 0; i < MT_suitec; i++) {\
+			if (strcmp(MT_suitev[i], #x) == 0) run++;\
+		}\
+	} else {\
+		run++;\
+	}\
+	if (run > 0) {\
+	int cur_MT_fail = MT_fail;\
+	x();\
+	if (cur_MT_fail < MT_fail) {\
+		char buffer[MAX_BUFFER];\
+		snprintf(buffer, MAX_BUFFER, "[%sFAIL%s] Suite: %s %s:%s", COLOUR(MTC_FAIL), COLOUR(MTC_RESET), #x, __FILE__, STR(__LINE__));\
+		VERB1(buffer);\
+	} else {\
+		char buffer[MAX_BUFFER];\
+		snprintf(buffer, MAX_BUFFER, "[%sPASS%s] Suite: %s %s:%s", COLOUR(MTC_PASS), COLOUR(MTC_RESET), #x, __FILE__, STR(__LINE__));\
+		VERB2(buffer);\
+	}}} while (0);
+
 #define MT_MAIN(x) int MT_colour_flag;\
 int MT_verbose;\
 int MT_fail;\
@@ -81,6 +107,8 @@ int MT_force_flag;\
 int MT_total;\
 int MT_testc;\
 char** MT_testv;\
+int MT_suitec;\
+char** MT_suitev;\
 int main(int argc, char** argv) { \
 	int c;\
 	int digit_optind = 0;\
@@ -91,6 +119,8 @@ int main(int argc, char** argv) { \
 	MT_total = 0;\
 	MT_testc = 0;\
 	MT_testv = calloc(sizeof(char*), argc);\
+	MT_suitec = 0;\
+	MT_suitev = calloc(sizeof(char*), argc);\
 	while(1) {\
 		int this_option_optind = optind ? optind : 1;\
 		int option_index = 0;\
@@ -100,8 +130,9 @@ int main(int argc, char** argv) { \
 			{"verbose", no_argument, 0, 'v'},\
 			{"force", no_argument, 0, 'f'},\
 			{"test", required_argument, 0, 't'},\
+			{"suite", required_argument, 0, 's'},\
 		};\
-		c = getopt_long(argc, argv, "hvft:", long_options, &option_index);\
+		c = getopt_long(argc, argv, "hvft:s:", long_options, &option_index);\
 		if (c == -1) break;\
 		switch (c) {\
 			case 0:\
@@ -123,6 +154,11 @@ int main(int argc, char** argv) { \
 				strcpy(MT_testv[MT_testc], optarg);\
 				MT_testc++;\
 				break;\
+			case 's':\
+				MT_suitev[MT_suitec] = calloc(sizeof(char), MAX_BUFFER);\
+				strcpy(MT_suitev[MT_suitec], optarg);\
+				MT_suitec++;\
+				break;\
 			default:\
 				break;\
 		}\
@@ -138,6 +174,7 @@ int main(int argc, char** argv) { \
 		VERB0(buffer);\
 	}\
 	free(MT_testv);\
+	free(MT_suitev);\
 	return 0;\
 }
 

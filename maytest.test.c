@@ -14,7 +14,11 @@ void test_fail() {
 	ASSERT(1==0);
 }
 
-void local_main() {
+void test_suite() {
 	RUN(test_pass);
 	RUN(test_fail);
+}
+
+void local_main() {
+	SUITE(test_suite);
 }
